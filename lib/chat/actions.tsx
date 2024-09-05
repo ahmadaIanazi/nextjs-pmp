@@ -9,8 +9,6 @@ import {
   getAIState
 } from 'ai/rsc'
 import { nanoid } from '@/lib/utils'
-import { BotCard, BotMessage } from '@/components/stocks'
-import { UserMessage } from '@/components/stocks/message'
 import { Chat, Message } from '@/lib/types'
 import { auth } from '@/auth'
 import { saveChat } from '@/app/actions'
@@ -22,7 +20,9 @@ const openai = new OpenAI({
 const QuizQuestion = z.object({
   question: z.string(),
   options: z.array(z.string()),
-  correctAnswer: z.string()
+  correctAnswer: z.string(),
+  hostMessageCorrect: z.string(),
+  hostMessageIncorrect: z.string()
 })
 
 type QuizQuestion = z.infer<typeof QuizQuestion>
@@ -84,16 +84,11 @@ async function submitUserMessage(content: string) {
 
     console.log('OpenAI response received', response)
 
-    const stream = createStreamableUI(<BotMessage content={''} />)
+    let assistantResponse = ''
 
     for await (const chunk of response) {
-      const content = chunk.choices[0]?.delta?.content || ''
-      stream.update(
-        <BotMessage content={stream.value.props.content + content} />
-      )
+      assistantResponse += chunk.choices[0]?.delta?.content || ''
     }
-
-    stream.done()
 
     aiState.done({
       ...aiState.get(),
@@ -102,7 +97,7 @@ async function submitUserMessage(content: string) {
         {
           id: nanoid(),
           role: 'assistant',
-          content: stream.value.props.content
+          content: assistantResponse
         }
       ],
       currentQuestionIndex: isAnswer
@@ -114,7 +109,8 @@ async function submitUserMessage(content: string) {
 
     return {
       id: nanoid(),
-      display: stream.value
+      role: 'assistant',
+      content: assistantResponse
     }
   } catch (error) {
     console.error('Error in submitUserMessage:', error)
@@ -184,11 +180,7 @@ export const getUIStateFromAIState = (aiState: Chat) => {
     .filter(message => message.role !== 'system')
     .map((message, index) => ({
       id: `${aiState.chatId}-${index}`,
-      display:
-        message.role === 'user' ? (
-          <UserMessage>{message.content as string}</UserMessage>
-        ) : (
-          <BotMessage content={message.content as string} />
-        )
+      role: message.role,
+      content: message.content
     }))
 }

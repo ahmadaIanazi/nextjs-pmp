@@ -5,7 +5,6 @@ import Textarea from 'react-textarea-autosize'
 
 import { useActions, useUIState } from 'ai/rsc'
 
-import { UserMessage } from './stocks/message'
 import { type AI } from '@/lib/chat/actions'
 import { Button } from '@/components/ui/button'
 import { IconArrowElbow, IconPlus } from '@/components/ui/icons'
@@ -57,7 +56,8 @@ export function PromptForm({
           ...currentMessages,
           {
             id: nanoid(),
-            display: <UserMessage>{value}</UserMessage>
+            role: 'user',
+            content: value
           }
         ])
 

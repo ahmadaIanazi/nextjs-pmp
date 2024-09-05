@@ -9,19 +9,13 @@ import { Input } from '@/components/ui/input'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Card, CardContent, CardTitle } from '@/components/ui/card'
 import { generateQuizQuestions } from '@/lib/questions/actions'
-import {
-  Send,
-  Star,
-  Coffee,
-  Brain,
-  Zap,
-  CheckCircle,
-  XCircle,
-  Clock
-} from 'lucide-react'
+import { Send, Star, Clock, CheckCircle, XCircle } from 'lucide-react'
 import { Progress } from '@/components/ui/progress'
 import { Badge } from '@/components/ui/badge'
 import { EmptyScreen } from './empty-screen'
+import { FeedbackModal } from './feedback-modal'
+import { config } from '@/config/setup'
+import { nanoid } from 'nanoid'
 
 export interface ChatProps extends React.ComponentProps<'div'> {
   initialMessages?: Message[]
@@ -39,44 +33,38 @@ export function Chat({ id, className, session, missingKeys }: ChatProps) {
   const [score, setScore] = useState(0)
   const [level, setLevel] = useState(1)
   const [experience, setExperience] = useState(0)
-  const [credits, setCredits] = useState(100)
   const scrollRef = useRef<HTMLDivElement>(null)
   const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null)
   const [isAnswerCorrect, setIsAnswerCorrect] = useState<boolean | null>(null)
-  const correctAudioRef = useRef<HTMLAudioElement | null>(null)
-  const wrongAudioRef = useRef<HTMLAudioElement | null>(null)
   const [timer, setTimer] = useState(0)
   const timerRef = useRef<NodeJS.Timeout | null>(null)
-
-  useEffect(() => {
-    correctAudioRef.current = new Audio('/sounds/correct.mp3')
-    wrongAudioRef.current = new Audio('/sounds/wrong.mp3')
-  }, [])
-
-  const playSound = (isCorrect: boolean) => {
-    if (isCorrect && correctAudioRef.current) {
-      correctAudioRef.current.play()
-    } else if (!isCorrect && wrongAudioRef.current) {
-      wrongAudioRef.current.play()
-    }
-  }
+  const [difficulty, setDifficulty] = useState(1)
+  const [currentTopicIndex, setCurrentTopicIndex] = useState(0)
+  const [chatMessages, setChatMessages] = useState<Message[]>([])
+  const [questionsBatch, setQuestionsBatch] = useState<QuizQuestion[]>([])
+  const [isFeedbackModalOpen, setIsFeedbackModalOpen] = useState(false)
+  const [feedbackMessage, setFeedbackMessage] = useState('')
+  const [correctAnswersCount, setCorrectAnswersCount] = useState(0)
 
   const startQuiz = useCallback(async () => {
     try {
       console.log('Starting quiz generation...')
       const { quizId, questions } = await generateQuizQuestions(
-        'PMP - Project Management Professional Test Exams - Level 1 easy',
-        5
+        config.topics[currentTopicIndex],
+        difficulty,
+        10
       )
       console.log('Quiz generated:', { quizId, questions })
+      setQuestionsBatch(questions)
       setAIState(prevState => ({
         ...prevState,
         quizId,
-        questions,
+        questions: questions.slice(0, 10),
         currentQuestionIndex: 0
       }))
       setIsQuizStarted(true)
-      // Start the timer
+      setTimer(0)
+      setCorrectAnswersCount(0)
       timerRef.current = setInterval(() => {
         setTimer(prevTimer => prevTimer + 1)
       }, 1000)
@@ -84,7 +72,7 @@ export function Chat({ id, className, session, missingKeys }: ChatProps) {
       console.error('Failed to start quiz:', error)
       toast.error('Failed to start quiz. Please try again.')
     }
-  }, [setAIState])
+  }, [setAIState, currentTopicIndex, difficulty])
 
   const handleAnswerSubmit = useCallback(
     async (answer: string) => {
@@ -93,27 +81,58 @@ export function Chat({ id, className, session, missingKeys }: ChatProps) {
       const currentQuestion = aiState.questions[aiState.currentQuestionIndex]
       const isCorrect = answer === currentQuestion.correctAnswer
       setIsAnswerCorrect(isCorrect)
-      const pointsEarned = isCorrect ? 10 : 0
+      if (isCorrect) {
+        setCorrectAnswersCount(prev => prev + 1)
+      }
 
-      setScore(prevScore => prevScore + pointsEarned)
-      setExperience(prevExp => prevExp + pointsEarned)
-      setCredits(prevCredits => prevCredits + (isCorrect ? 5 : 0))
+      const userMessage: Message = {
+        id: nanoid(),
+        role: 'user',
+        content: answer
+      }
+      setChatMessages(prevMessages => [...prevMessages, userMessage])
 
-      playSound(isCorrect)
+      // Add the host message based on whether the answer is correct or not
+      const hostMessage: Message = {
+        id: nanoid(),
+        role: 'assistant',
+        content: isCorrect
+          ? currentQuestion.hostMessageCorrect
+          : currentQuestion.hostMessageIncorrect
+      }
+      setChatMessages(prevMessages => [...prevMessages, hostMessage])
 
       await submitUserMessage(answer)
 
-      // Check if we need to generate more questions
       if (aiState.currentQuestionIndex >= aiState.questions.length - 1) {
-        const { questions } = await generateQuizQuestions(
-          'PMP - Project Management Professional Test Exams - Increase Difficulty',
-          5
-        )
-        setAIState(prevState => ({
-          ...prevState,
-          questions: [...prevState.questions, ...questions],
-          currentQuestionIndex: prevState.currentQuestionIndex + 1
-        }))
+        // Stop the timer
+        if (timerRef.current) {
+          clearInterval(timerRef.current)
+        }
+
+        // Check if we have completed all topics at the current difficulty level
+        if (currentTopicIndex === config.topics.length - 1) {
+          const nextDifficulty = difficulty + 1
+          setDifficulty(nextDifficulty)
+          setCurrentTopicIndex(0)
+          const { questions } = await generateQuizQuestions(
+            config.topics[0],
+            nextDifficulty,
+            10
+          )
+          setQuestionsBatch(questions)
+          setAIState(prevState => ({
+            ...prevState,
+            questions: questions.slice(0, 10),
+            currentQuestionIndex: 0
+          }))
+        } else {
+          // Provide feedback and ask if the user wants to repeat the topic or move to the next one
+          setFeedbackMessage(
+            `Good job! You have completed Quiz ${currentTopicIndex + 1} with ${correctAnswersCount} correct out of ${aiState.questions.length} questions. Time taken: ${formatTime(timer)}. Repeat the topic or move to the next topic?`
+          )
+          setIsFeedbackModalOpen(true)
+        }
       } else {
         setAIState(prevState => ({
           ...prevState,
@@ -123,25 +142,79 @@ export function Chat({ id, className, session, missingKeys }: ChatProps) {
 
       setSelectedAnswer(null)
       setIsAnswerCorrect(null)
-      // Reset the timer for the next question
-      setTimer(0)
     },
-    [submitUserMessage, aiState, setAIState]
+    [
+      submitUserMessage,
+      aiState,
+      setAIState,
+      currentTopicIndex,
+      difficulty,
+      correctAnswersCount,
+      timer
+    ]
   )
 
   const handleSendMessage = useCallback(async () => {
     if (input.trim()) {
+      const userMessage: Message = {
+        id: nanoid(),
+        role: 'user',
+        content: input
+      }
+      setChatMessages(prevMessages => [...prevMessages, userMessage])
+
       console.log('Submitting user message:', input)
       const currentQuestion = aiState.questions[aiState.currentQuestionIndex]
       const messageWithContext = `Question: ${currentQuestion.question}\n\nUser's query: ${input}`
       await submitUserMessage(messageWithContext)
+
+      // Add AI response to chatMessages (you might want to update this with the actual AI response)
+      const aiResponse: Message = {
+        id: nanoid(),
+        role: 'assistant',
+        content: 'AI response placeholder'
+      }
+      setChatMessages(prevMessages => [...prevMessages, aiResponse])
+
       setInput('')
     }
   }, [input, submitUserMessage, aiState])
 
-  useEffect(() => {
-    console.log('Current AI State:', aiState)
-  }, [aiState])
+  const handleRepeatTopic = useCallback(() => {
+    setIsFeedbackModalOpen(false)
+    setAIState(prevState => ({
+      ...prevState,
+      questions: questionsBatch.slice(0, 10),
+      currentQuestionIndex: 0
+    }))
+    setCorrectAnswersCount(0)
+    setTimer(0)
+    timerRef.current = setInterval(() => {
+      setTimer(prevTimer => prevTimer + 1)
+    }, 1000)
+  }, [questionsBatch, setAIState])
+
+  const handleNextTopic = useCallback(async () => {
+    setIsFeedbackModalOpen(false)
+    const nextTopicIndex = currentTopicIndex + 1
+    setCurrentTopicIndex(nextTopicIndex)
+    const { questions } = await generateQuizQuestions(
+      config.topics[nextTopicIndex],
+      difficulty,
+      10
+    )
+    setQuestionsBatch(questions)
+    setAIState(prevState => ({
+      ...prevState,
+      questions: questions.slice(0, 10),
+      currentQuestionIndex: 0
+    }))
+    setCorrectAnswersCount(0)
+    setTimer(0)
+    timerRef.current = setInterval(() => {
+      setTimer(prevTimer => prevTimer + 1)
+    }, 1000)
+  }, [currentTopicIndex, difficulty, setAIState])
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -152,7 +225,6 @@ export function Chat({ id, className, session, missingKeys }: ChatProps) {
   useEffect(() => {
     if (experience >= level * 100) {
       setLevel(prevLevel => prevLevel + 1)
-      setCredits(prevCredits => prevCredits + 50)
       toast.success(`Congratulations! You've reached level ${level + 1}!`)
     }
   }, [experience, level])
@@ -180,17 +252,20 @@ export function Chat({ id, className, session, missingKeys }: ChatProps) {
           <div className="flex items-center space-x-4">
             <div className="flex items-center">
               <Star className="h-5 w-5 text-yellow-400 mr-1" />
-              <span className="font-bold">{score}</span>
-            </div>
-            <div className="flex items-center">
-              <Coffee className="h-5 w-5 text-green-400 mr-1" />
-              <span className="font-bold">{credits}</span>
+              <span className="font-bold">{correctAnswersCount}</span>
             </div>
           </div>
           <div className="flex items-center space-x-2">
-            <Badge variant="secondary">Level {level}</Badge>
+            <Badge variant="secondary">
+              Question {aiState.currentQuestionIndex + 1} /{' '}
+              {aiState.questions.length}
+            </Badge>
             <Progress
-              value={((experience % (level * 100)) / (level * 100)) * 100}
+              value={
+                ((aiState.currentQuestionIndex + 1) /
+                  aiState.questions.length) *
+                100
+              }
               className="w-20"
             />
           </div>
@@ -217,8 +292,8 @@ export function Chat({ id, className, session, missingKeys }: ChatProps) {
                     className={`w-full min-h-[60px] p-4 flex items-center justify-between text-left transition-all duration-300 ${
                       selectedAnswer === option
                         ? isAnswerCorrect
-                          ? 'bg-green-500 hover:bg-green-600'
-                          : 'bg-red-500 hover:bg-red-600'
+                          ? 'bg-green-500 hover:bg-green-600 text-white'
+                          : 'bg-red-500 hover:bg-red-600 text-white'
                         : ''
                     }`}
                     onClick={() => handleAnswerSubmit(option)}
@@ -242,9 +317,9 @@ export function Chat({ id, className, session, missingKeys }: ChatProps) {
             </CardContent>
           </Card>
         )}
-        {messages.map((message, index) => (
+        {chatMessages.map((message, index) => (
           <div
-            key={index}
+            key={message.id}
             className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'} mb-4`}
           >
             <div
@@ -272,6 +347,14 @@ export function Chat({ id, className, session, missingKeys }: ChatProps) {
           </div>
         </CardContent>
       </Card>
+
+      <FeedbackModal
+        isOpen={isFeedbackModalOpen}
+        onClose={() => setIsFeedbackModalOpen(false)}
+        onRepeat={handleRepeatTopic}
+        onNext={handleNextTopic}
+        feedbackMessage={feedbackMessage}
+      />
     </div>
   )
 }

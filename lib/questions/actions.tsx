@@ -1,4 +1,5 @@
 'use server'
+import { config } from '@/config/setup'
 import { nanoid } from '@/lib/utils'
 import OpenAI from 'openai'
 
@@ -9,16 +10,24 @@ const openai = new OpenAI({
 
 export async function generateQuizQuestions(
   topic: string,
+  difficulty: number,
   numberOfQuestions: number
 ) {
-  console.log('Generating quiz questions:', { topic, numberOfQuestions })
+  console.log('Generating quiz questions:', {
+    topic,
+    difficulty,
+    numberOfQuestions
+  })
   try {
     const response = await openai.chat.completions.create({
       model: 'gpt-3.5-turbo',
       messages: [
         {
           role: 'system',
-          content: `You are a quiz generator. Create a quiz about ${topic} with ${numberOfQuestions} questions. Each question should have 4 options and only one correct answer.`
+          content: `You are a quiz generator for ${config.sitename}. 
+          You are helping the user to prepare for ${config.AISubject}.
+          Using the following documentation: ${config.AIDocs}. And Starting with the basics, and increasing the difficulty as the user progresses.
+          Create a quiz about ${topic} with ${numberOfQuestions} questions. Each question should have 4 options and only one correct answer. Also a host message to the user if they answer a question correctly or incorrectly.`
         },
         {
           role: 'user',
@@ -36,11 +45,23 @@ export async function generateQuizQuestions(
                 items: {
                   type: 'object',
                   properties: {
+                    difficulty: { type: 'number' },
+                    topic: { type: 'string' },
                     question: { type: 'string' },
                     options: { type: 'array', items: { type: 'string' } },
-                    correctAnswer: { type: 'string' }
+                    correctAnswer: { type: 'string' },
+                    hostMessageCorrect: { type: 'string' },
+                    hostMessageIncorrect: { type: 'string' }
                   },
-                  required: ['question', 'options', 'correctAnswer']
+                  required: [
+                    'difficulty',
+                    'topic',
+                    'question',
+                    'options',
+                    'correctAnswer',
+                    'hostMessageCorrect',
+                    'hostMessageIncorrect'
+                  ]
                 }
               }
             },
