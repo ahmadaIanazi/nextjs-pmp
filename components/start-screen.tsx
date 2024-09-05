@@ -1,6 +1,6 @@
 import { Button } from '@/components/ui/button'
 
-export function EmptyScreen({ onStartQuiz }: { onStartQuiz: () => void }) {
+export function StartScreen({ onStartQuiz }: { onStartQuiz: () => void }) {
   return (
     <div className="mx-auto  max-w-2xl px-4">
       <div className="items-center justify-center rounded-lg border bg-background p-8">

@@ -1,9 +1,6 @@
 import { nanoid } from '@/lib/utils'
-import { Chat } from '@/components/chat'
+import { Quiz } from '@/components/Quiz'
 import { AI } from '@/lib/chat/actions'
-import { auth } from '@/auth'
-import { Session } from '@/lib/types'
-import { getMissingKeys } from '@/app/actions'
 
 export const metadata = {
   title: 'AI Trivia Challenge'
@@ -11,8 +8,6 @@ export const metadata = {
 
 export default async function IndexPage() {
   const id = nanoid()
-  const session = (await auth()) as Session
-  const missingKeys = await getMissingKeys()
 
   return (
     <AI
@@ -21,10 +16,12 @@ export default async function IndexPage() {
         quizId: '',
         messages: [],
         currentQuestionIndex: 0,
-        questions: []
+        questions: [],
+        topic: 'General Knowledge',
+        difficulty: 1
       }}
     >
-      <Chat id={id} session={session} missingKeys={missingKeys} />
+      <Quiz />
     </AI>
   )
 }

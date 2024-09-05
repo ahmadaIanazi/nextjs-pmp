@@ -3,7 +3,7 @@ import { notFound, redirect } from 'next/navigation'
 
 import { auth } from '@/auth'
 import { getChat, getMissingKeys } from '@/app/actions'
-import { Chat } from '@/components/chat'
+import { Quiz } from '@/components/Quiz'
 import { AI } from '@/lib/chat/actions'
 import { Session } from '@/lib/types'
 
@@ -53,7 +53,7 @@ export default async function ChatPage({ params }: ChatPageProps) {
 
     return (
       <AI initialAIState={{ chatId: chat.id, messages: chat.messages }}>
-        <Chat
+        <Quiz
           id={chat.id}
           session={session}
           initialMessages={chat.messages}
