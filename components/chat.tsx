@@ -9,8 +9,16 @@ import { Input } from '@/components/ui/input'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Card, CardContent } from '@/components/ui/card'
 import { generateQuizQuestions } from '@/lib/questions/actions'
-import { Send, Star, Coffee, Brain, Zap } from 'lucide-react'
-import { motion } from 'framer-motion'
+import {
+  Send,
+  Star,
+  Coffee,
+  Brain,
+  Zap,
+  CheckCircle,
+  XCircle,
+  Clock
+} from 'lucide-react'
 import { Progress } from '@/components/ui/progress'
 import { Badge } from '@/components/ui/badge'
 
@@ -32,6 +40,25 @@ export function Chat({ id, className, session, missingKeys }: ChatProps) {
   const [experience, setExperience] = useState(0)
   const [credits, setCredits] = useState(100)
   const scrollRef = useRef<HTMLDivElement>(null)
+  const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null)
+  const [isAnswerCorrect, setIsAnswerCorrect] = useState<boolean | null>(null)
+  const correctAudioRef = useRef<HTMLAudioElement | null>(null)
+  const wrongAudioRef = useRef<HTMLAudioElement | null>(null)
+  const [timer, setTimer] = useState(0)
+  const timerRef = useRef<NodeJS.Timeout | null>(null)
+
+  useEffect(() => {
+    correctAudioRef.current = new Audio('/sounds/correct.mp3')
+    wrongAudioRef.current = new Audio('/sounds/wrong.mp3')
+  }, [])
+
+  const playSound = (isCorrect: boolean) => {
+    if (isCorrect && correctAudioRef.current) {
+      correctAudioRef.current.play()
+    } else if (!isCorrect && wrongAudioRef.current) {
+      wrongAudioRef.current.play()
+    }
+  }
 
   const startQuiz = useCallback(async () => {
     try {
@@ -48,6 +75,10 @@ export function Chat({ id, className, session, missingKeys }: ChatProps) {
         currentQuestionIndex: 0
       }))
       setIsQuizStarted(true)
+      // Start the timer
+      timerRef.current = setInterval(() => {
+        setTimer(prevTimer => prevTimer + 1)
+      }, 1000)
     } catch (error) {
       console.error('Failed to start quiz:', error)
       toast.error('Failed to start quiz. Please try again.')
@@ -56,14 +87,18 @@ export function Chat({ id, className, session, missingKeys }: ChatProps) {
 
   const handleAnswerSubmit = useCallback(
     async (answer: string) => {
+      setSelectedAnswer(answer)
       console.log('Submitting answer:', answer)
       const currentQuestion = aiState.questions[aiState.currentQuestionIndex]
       const isCorrect = answer === currentQuestion.correctAnswer
+      setIsAnswerCorrect(isCorrect)
       const pointsEarned = isCorrect ? 10 : 0
 
       setScore(prevScore => prevScore + pointsEarned)
       setExperience(prevExp => prevExp + pointsEarned)
       setCredits(prevCredits => prevCredits + (isCorrect ? 5 : 0))
+
+      playSound(isCorrect)
 
       await submitUserMessage(answer)
 
@@ -75,9 +110,20 @@ export function Chat({ id, className, session, missingKeys }: ChatProps) {
         )
         setAIState(prevState => ({
           ...prevState,
-          questions: [...prevState.questions, ...questions]
+          questions: [...prevState.questions, ...questions],
+          currentQuestionIndex: prevState.currentQuestionIndex + 1
+        }))
+      } else {
+        setAIState(prevState => ({
+          ...prevState,
+          currentQuestionIndex: prevState.currentQuestionIndex + 1
         }))
       }
+
+      setSelectedAnswer(null)
+      setIsAnswerCorrect(null)
+      // Reset the timer for the next question
+      setTimer(0)
     },
     [submitUserMessage, aiState, setAIState]
   )
@@ -110,6 +156,12 @@ export function Chat({ id, className, session, missingKeys }: ChatProps) {
     }
   }, [experience, level])
 
+  const formatTime = (seconds: number) => {
+    const minutes = Math.floor(seconds / 60)
+    const remainingSeconds = seconds % 60
+    return `${minutes}:${remainingSeconds < 10 ? '0' : ''}${remainingSeconds}`
+  }
+
   if (!isQuizStarted) {
     return (
       <div className="flex items-center justify-center h-full">
@@ -141,6 +193,10 @@ export function Chat({ id, className, session, missingKeys }: ChatProps) {
               className="w-20"
             />
           </div>
+          <div className="flex items-center">
+            <Clock className="h-5 w-5 mr-1" />
+            <span>{formatTime(timer)}</span>
+          </div>
         </CardContent>
       </Card>
 
@@ -148,28 +204,46 @@ export function Chat({ id, className, session, missingKeys }: ChatProps) {
         {currentQuestion && (
           <Card className="mb-4">
             <CardContent className="p-4">
-              <h2 className="text-xl font-bold mb-2">
+              <h2 className="text-xl font-bold mb-4">
                 Question {aiState.currentQuestionIndex + 1}:{' '}
                 {currentQuestion.question}
               </h2>
-              {currentQuestion.options.map((option, index) => (
-                <Button
-                  key={index}
-                  className="w-full mb-2"
-                  onClick={() => handleAnswerSubmit(option)}
-                >
-                  {option}
-                </Button>
-              ))}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                {currentQuestion.options.map((option, index) => (
+                  <Button
+                    key={index}
+                    variant="outline"
+                    className={`w-full min-h-[60px] p-4 flex items-center justify-between text-left transition-all duration-300 ${
+                      selectedAnswer === option
+                        ? isAnswerCorrect
+                          ? 'bg-green-500 hover:bg-green-600'
+                          : 'bg-red-500 hover:bg-red-600'
+                        : ''
+                    }`}
+                    onClick={() => handleAnswerSubmit(option)}
+                    disabled={selectedAnswer !== null}
+                  >
+                    <span className="flex-grow mr-2 whitespace-normal break-words">
+                      {option}
+                    </span>
+                    {selectedAnswer === option && (
+                      <span className="flex-shrink-0">
+                        {isAnswerCorrect ? (
+                          <CheckCircle className="w-6 h-6" />
+                        ) : (
+                          <XCircle className="w-6 h-6" />
+                        )}
+                      </span>
+                    )}
+                  </Button>
+                ))}
+              </div>
             </CardContent>
           </Card>
         )}
         {messages.map((message, index) => (
-          <motion.div
+          <div
             key={index}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.3 }}
             className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'} mb-4`}
           >
             <div
@@ -177,7 +251,7 @@ export function Chat({ id, className, session, missingKeys }: ChatProps) {
             >
               {message.content}
             </div>
-          </motion.div>
+          </div>
         ))}
       </ScrollArea>
 
