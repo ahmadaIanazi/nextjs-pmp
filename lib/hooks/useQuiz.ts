@@ -27,22 +27,28 @@ export function useQuiz() {
   const startQuiz = useCallback(async () => {
     setIsLoading(true)
     try {
-      const result = await generateQuizQuestions(
-        config.topics[currentTopicIndex],
-        currentDifficulty,
-        10
-      )
-      console.log('generateQuizQuestions result:', result) // Add this line for debugging
+      let result
+      try {
+        result = await generateQuizQuestions(
+          config.topics[currentTopicIndex],
+          currentDifficulty,
+          10
+        )
+        console.log('generateQuizQuestions result:', result)
+      } catch (error) {
+        console.error('Error generating questions, using fallback:', error)
+        result = getFallbackQuestions(10)
+      }
 
       if (
         !result ||
         typeof result !== 'object' ||
         !('quizId' in result) ||
-        !('questions' in result)
+        !('questions' in result) ||
+        !Array.isArray(result.questions) ||
+        result.questions.length === 0
       ) {
-        throw new Error(
-          `Invalid response from generateQuizQuestions: ${JSON.stringify(result)}`
-        )
+        throw new Error(`Invalid quiz data: ${JSON.stringify(result)}`)
       }
 
       const { quizId, questions } = result
