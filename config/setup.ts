@@ -1,6 +1,15 @@
 export const config = {
   sitename: 'Quiz Master',
   AISubject: 'PMP - Project Management Professional - Edition 7',
+  AILanguage: 'English',
+  AILanguageAccent: 'American',
+  AICharacter: 'Friendly',
+  AIStyle: 'Professional',
+  AIAgeRating: '18+',
+  AIAgeRatingDescription: 'Mature content',
+  AITargetAudience: 'Adults',
+  AITargetAge: '25-35',
+  AITargetLocation: 'USA',
   AIDocs: `
   1) Project Integration Management
 Develop Project Charter
