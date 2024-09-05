@@ -27,11 +27,26 @@ export function useQuiz() {
   const startQuiz = useCallback(async () => {
     setIsLoading(true)
     try {
-      const { quizId, questions } = await generateQuizQuestions(
-        config.topics[0],
-        aiState.difficulty,
+      const result = await generateQuizQuestions(
+        config.topics[currentTopicIndex],
+        currentDifficulty,
         10
       )
+      console.log('generateQuizQuestions result:', result) // Add this line for debugging
+
+      if (
+        !result ||
+        typeof result !== 'object' ||
+        !('quizId' in result) ||
+        !('questions' in result)
+      ) {
+        throw new Error(
+          `Invalid response from generateQuizQuestions: ${JSON.stringify(result)}`
+        )
+      }
+
+      const { quizId, questions } = result
+
       setAIState(prevState => ({
         ...prevState,
         quizId,
@@ -40,7 +55,7 @@ export function useQuiz() {
       }))
       setIsLoading(false)
       setCountdown(3)
-      setTimer(0) // Reset timer when starting a new quiz
+      setTimer(0)
       const countdownInterval = setInterval(() => {
         setCountdown(prev => {
           if (prev === 1) {
@@ -53,10 +68,10 @@ export function useQuiz() {
       }, 1000)
     } catch (error) {
       console.error('Failed to start quiz:', error)
-      toast.error('Failed to start quiz. Please try again.')
+      toast.error(`Failed to start quiz: ${error.message}. Please try again.`)
       setIsLoading(false)
     }
-  }, [setAIState, aiState.topic, aiState.difficulty])
+  }, [setAIState, currentTopicIndex, currentDifficulty])
 
   // Add this effect to handle the timer
   useEffect(() => {

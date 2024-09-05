@@ -29,9 +29,9 @@ export function Quiz() {
     handleAnswerSubmit,
     handleSendMessage,
     handleRepeatQuiz,
+    handleNextTopic,
     setShowCompletionModal,
     timer,
-    handleNextTopic,
     currentTopicIndex,
     currentDifficulty
   } = useQuiz()
@@ -40,14 +40,14 @@ export function Quiz() {
     if (isLoading) {
       return (
         <div className="flex items-center justify-center w-full h-full">
-          <h1 className="text-2xl">Loading quiz...</h1>
+          <h1 className="text-6xl text-bold">Generating quiz...</h1>
         </div>
       )
     }
     if (countdown !== null) {
       return (
         <div className="flex items-center justify-center w-full h-full">
-          <h1 className="text-6xl">{countdown}</h1>
+          <h1 className="text-6xl text-bold">{countdown}</h1>
         </div>
       )
     }
