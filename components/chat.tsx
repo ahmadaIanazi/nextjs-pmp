@@ -7,7 +7,7 @@ import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { ScrollArea } from '@/components/ui/scroll-area'
-import { Card, CardContent } from '@/components/ui/card'
+import { Card, CardContent, CardTitle } from '@/components/ui/card'
 import { generateQuizQuestions } from '@/lib/questions/actions'
 import {
   Send,
@@ -21,6 +21,7 @@ import {
 } from 'lucide-react'
 import { Progress } from '@/components/ui/progress'
 import { Badge } from '@/components/ui/badge'
+import { EmptyScreen } from './empty-screen'
 
 export interface ChatProps extends React.ComponentProps<'div'> {
   initialMessages?: Message[]
@@ -164,8 +165,8 @@ export function Chat({ id, className, session, missingKeys }: ChatProps) {
 
   if (!isQuizStarted) {
     return (
-      <div className="flex items-center justify-center h-full">
-        <Button onClick={startQuiz}>Start Quiz</Button>
+      <div className="flex w-full items-center justify-center h-full">
+        <EmptyScreen onStartQuiz={startQuiz} />
       </div>
     )
   }
@@ -173,7 +174,7 @@ export function Chat({ id, className, session, missingKeys }: ChatProps) {
   const currentQuestion = aiState.questions[aiState.currentQuestionIndex]
 
   return (
-    <div className="flex flex-col h-full max-w-4xl mx-auto p-4 space-y-4">
+    <div className="flex flex-col h-full max-w-4xl p-4 space-y-4">
       <Card>
         <CardContent className="p-4 flex justify-between items-center">
           <div className="flex items-center space-x-4">
@@ -202,10 +203,10 @@ export function Chat({ id, className, session, missingKeys }: ChatProps) {
 
       <ScrollArea className="flex-1" ref={scrollRef}>
         {currentQuestion && (
-          <Card className="mb-4">
-            <CardContent className="p-4">
+          <Card className="mb-4 p-4">
+            <CardTitle>Question {aiState.currentQuestionIndex + 1}</CardTitle>
+            <CardContent>
               <h2 className="text-xl font-bold mb-4">
-                Question {aiState.currentQuestionIndex + 1}:{' '}
                 {currentQuestion.question}
               </h2>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
