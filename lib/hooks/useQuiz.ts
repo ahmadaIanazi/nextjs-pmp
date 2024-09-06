@@ -27,18 +27,23 @@ export function useQuiz() {
   const startQuiz = useCallback(async () => {
     setIsLoading(true)
     try {
-      let result
-      try {
-        result = await generateQuizQuestions(
-          config.topics[currentTopicIndex],
-          currentDifficulty,
-          10
-        )
-        console.log('generateQuizQuestions result:', result)
-      } catch (error) {
-        console.error('Error generating questions, using fallback:', error)
-        result = getFallbackQuestions(10)
+      const response = await fetch('/api/generate-quiz', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          topic: config.topics[currentTopicIndex],
+          difficulty: currentDifficulty,
+          numberOfQuestions: 10
+        })
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to generate quiz')
       }
+
+      const result = await response.json()
 
       if (
         !result ||

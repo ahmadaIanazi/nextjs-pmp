@@ -25,14 +25,7 @@ export async function generateQuizQuestions(
       messages: [
         {
           role: 'system',
-          content: `You are a quiz generator for ${config.sitename}. 
-          You are helping the user to prepare for ${config.AISubject}.
-          Using the following documentation: ${config.AIDocs}. And Starting with the basics, and increasing the difficulty as the user progresses.
-          Create a quiz about ${topic} with ${numberOfQuestions} questions. Each question should have 4 options and only one correct answer. Also a host message to the user if they answer a question correctly or incorrectly.`
-        },
-        {
-          role: 'user',
-          content: 'Generate the quiz questions.'
+          content: `Create a concise quiz about ${topic} with ${numberOfQuestions} questions. Each question should have 4 options, one correct answer, and brief feedback messages.`
         }
       ],
       functions: [
@@ -46,8 +39,6 @@ export async function generateQuizQuestions(
                 items: {
                   type: 'object',
                   properties: {
-                    difficulty: { type: 'number' },
-                    topic: { type: 'string' },
                     question: { type: 'string' },
                     options: { type: 'array', items: { type: 'string' } },
                     correctAnswer: { type: 'string' },
@@ -55,8 +46,6 @@ export async function generateQuizQuestions(
                     hostMessageIncorrect: { type: 'string' }
                   },
                   required: [
-                    'difficulty',
-                    'topic',
                     'question',
                     'options',
                     'correctAnswer',
