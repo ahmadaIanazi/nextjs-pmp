@@ -1,12 +1,13 @@
-import { GeistSans } from 'geist/font/sans'
 import { GeistMono } from 'geist/font/mono'
+import { GeistSans } from 'geist/font/sans'
 
-import '@/styles/globals.css'
-import { cn } from '@/lib/utils'
-import { TailwindIndicator } from '@/components/tailwind-indicator'
-import { Providers } from '@/components/providers'
 import { Header } from '@/components/header'
+import { Providers } from '@/components/providers'
 import { Toaster } from '@/components/ui/sonner'
+import { cn } from '@/lib/utils'
+import '@/styles/globals.css'
+import { AuthProvider } from '@/components/auth-provider'
+import { auth } from '@/auth'
 
 export const metadata = {
   metadataBase: process.env.VERCEL_URL
@@ -35,7 +36,9 @@ interface RootLayoutProps {
   children: React.ReactNode
 }
 
-export default function RootLayout({ children }: RootLayoutProps) {
+export default async function RootLayout({ children }: RootLayoutProps) {
+  const session = await auth()
+
   return (
     <html lang="en" suppressHydrationWarning>
       <body
@@ -52,10 +55,14 @@ export default function RootLayout({ children }: RootLayoutProps) {
           enableSystem
           disableTransitionOnChange
         >
-          <div className="flex flex-col min-h-screen">
-            <Header />
-            <main className="flex flex-col flex-1 bg-muted/50">{children}</main>
-          </div>
+          <AuthProvider>
+            <div className="flex flex-col min-h-screen">
+              <Header />
+              <main className="flex flex-col flex-1 bg-muted/50">
+                {children}
+              </main>
+            </div>
+          </AuthProvider>
         </Providers>
       </body>
     </html>

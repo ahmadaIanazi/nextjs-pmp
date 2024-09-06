@@ -36,11 +36,20 @@ export async function authenticate(
       })
 
     if (parsedCredentials.success) {
-      await signIn('credentials', {
+      const result = await signIn('credentials', {
         email,
         password,
         redirect: false
       })
+
+      console.log('SignIn result:', result)
+
+      if (result?.error) {
+        return {
+          type: 'error',
+          resultCode: ResultCode.InvalidCredentials
+        }
+      }
 
       return {
         type: 'success',

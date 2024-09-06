@@ -1,17 +1,63 @@
-import { Button } from '@/components/ui/button'
+'use client'
 
-export function StartScreen({ onStartQuiz }: { onStartQuiz: () => void }) {
+import { Button } from '@/components/ui/button'
+import { signIn } from 'next-auth/react'
+import { Spinner } from '@/components/ui/spinner'
+import { getUserCredits, getUserData } from '@/app/actions/user'
+import { useState, useEffect } from 'react'
+
+interface StartScreenProps {
+  onStartQuiz: () => void
+}
+
+export function StartScreen({ onStartQuiz }: StartScreenProps) {
   return (
-    <div className="mx-auto  max-w-2xl px-4">
-      <div className="items-center justify-center rounded-lg border bg-background p-8">
-        <h1 className="mb-2 text-lg font-semibold">
-          Welcome to the AI Trivia Challenge!
-        </h1>
-        <p className="mb-4 leading-normal text-muted-foreground">
-          Test your knowledge with our AI-powered quiz. Are you ready to begin?
-        </p>
-        <Button onClick={onStartQuiz}>Start the Quiz</Button>
-      </div>
+    <div className="flex flex-col items-center justify-center h-full">
+      <h1 className="text-3xl font-bold mb-4">
+        Welcome to AI Trivia Challenge
+      </h1>
+      <p className="text-lg mb-8">Test your knowledge and learn new facts!</p>
+      <StartOrLogin onStartQuiz={onStartQuiz} />
     </div>
   )
+}
+
+function StartOrLogin({ onStartQuiz }: StartScreenProps) {
+  const [credits, setCredits] = useState<number | null>(null)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    async function fetchUserData() {
+      setLoading(true)
+      const userCredits = await getUserCredits()
+      setCredits(userCredits)
+      setLoading(false)
+    }
+
+    fetchUserData()
+  }, [])
+
+  if (loading) {
+    return <div>Loading</div>
+  }
+
+  if (credits !== null) {
+    if (credits > 100) {
+      return (
+        <div>
+          <p>Credits: {credits}</p>
+          <Button onClick={onStartQuiz}>Start Quiz</Button>
+        </div>
+      )
+    } else {
+      return (
+        <div>
+          <p>Credits: {credits}</p>
+          <Button onClick={() => {}}>Get More Credits</Button>
+        </div>
+      )
+    }
+  } else {
+    return <Button onClick={() => signIn()}>Login / Register</Button>
+  }
 }
