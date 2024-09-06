@@ -4,14 +4,16 @@ export type Message = CoreMessage & {
   id: string
 }
 
-export interface Chat extends Record<string, any> {
+export interface Chat {
   id: string
   title: string
-  createdAt: Date
   userId: string
-  path: string
+  createdAt: Date
   messages: Message[]
-  sharePath?: string
+  path: string
+  currentQuestionIndex: number
+  quizId: string
+  questions: QuizQuestion[]
 }
 
 export type ServerActionResult<Result> = Promise<
@@ -33,9 +35,30 @@ export interface AuthResult {
   message: string
 }
 
-export interface User extends Record<string, any> {
+export interface User {
   id: string
   email: string
-  password: string
+  password: string // Note: This should be hashed
   salt: string
+  credits: number
+  level: number
+  experience: number
+  createdAt: string
+  updatedAt: string
+  lastLoginAt: string
+  profile: {
+    name: string
+    avatar: string
+    bio: string
+  }
+}
+
+export interface QuizQuestion {
+  difficulty: number
+  topic: string
+  question: string
+  options: string[]
+  correctAnswer: string
+  hostMessageCorrect: string
+  hostMessageIncorrect: string
 }
