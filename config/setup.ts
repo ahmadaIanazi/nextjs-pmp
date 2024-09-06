@@ -10,6 +10,25 @@ export const config = {
   AITargetAudience: 'Adults',
   AITargetAge: '25-35',
   AITargetLocation: 'USA',
+  AIContent: [
+    {
+      subject: 'PMP - Project Management Professional - Edition 7',
+      topics: [
+        {
+          name: 'Project Integration Management',
+          titles: [
+            'Develop Project Charter',
+            'Develop Project Management Plan',
+            'Direct and Manage Project Work',
+            'Manage Project Knowledge',
+            'Monitor and Control Project Work',
+            'Perform Integrated Change Control',
+            'Close Project or Phase'
+          ]
+        }
+      ]
+    }
+  ],
   AIDocs: `
   1) Project Integration Management
 Develop Project Charter
